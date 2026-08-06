@@ -1,0 +1,14 @@
+[project]
+name = "questboard"
+version = "0.1.0"
+description = "Backend-first collaborative workflow API with dependency-aware quests, project permissions, and auditable state transitions."
+requires-python = ">=3.12"
+dependencies = [
+    "Django>=5.2,<5.3",
+    "djangorestframework>=3.16,<3.18",
+    "psycopg[binary]>=3.2,<3.3",
+]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
