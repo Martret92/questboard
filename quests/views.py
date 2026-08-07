@@ -44,6 +44,8 @@ class ProjectScopedMixin:
 
 
 class QuestViewSet(ProjectScopedMixin, viewsets.ViewSet):
+    serializer_class = QuestSerializer
+
     def list(self, request, project_pk=None):
         project = self._project(project_pk)
         queryset = Quest.objects.filter(project=project).select_related("assignee", "assignee__user").order_by("id")
@@ -110,6 +112,8 @@ class QuestViewSet(ProjectScopedMixin, viewsets.ViewSet):
 
 
 class QuestDependencyViewSet(ProjectScopedMixin, viewsets.ViewSet):
+    serializer_class = QuestDependencySerializer
+
     def list(self, request, project_pk=None, quest_pk=None):
         project = self._project(project_pk)
         quest = self._quest(project, quest_pk)
@@ -143,6 +147,8 @@ class QuestDependencyViewSet(ProjectScopedMixin, viewsets.ViewSet):
 
 
 class QuestTransitionView(ProjectScopedMixin, viewsets.ViewSet):
+    serializer_class = QuestTransitionSerializer
+
     def create(self, request, project_pk=None, quest_pk=None):
         project = self._project(project_pk)
         quest = self._quest(project, quest_pk)
@@ -160,6 +166,8 @@ class QuestTransitionView(ProjectScopedMixin, viewsets.ViewSet):
 
 
 class QuestEventView(ProjectScopedMixin, viewsets.ViewSet):
+    serializer_class = QuestEventSerializer
+
     def list(self, request, project_pk=None, quest_pk=None):
         project = self._project(project_pk)
         events = QuestEvent.objects.filter(
