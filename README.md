@@ -4,6 +4,8 @@ Backend-first collaborative workflow API built with Django, Django REST Framewor
 
 QuestBoard is intentionally not a generic task manager. Its backend centers on dependency-aware workflows, contextual permissions, business invariants, transactional graph mutation, and auditable state transitions.
 
+**Status: Backend MVP complete — frozen at credible professional evidence.**
+
 ## Live API
 
 - Swagger UI: https://questboard-4tnl.onrender.com/api/docs/
