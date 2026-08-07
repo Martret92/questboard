@@ -4,7 +4,7 @@ from quests.models import Quest
 
 
 class QuestSerializer(serializers.ModelSerializer):
-    assignee_id = serializers.IntegerField(source="assignee.id", allow_null=True, required=False)
+    assignee_id = serializers.IntegerField(allow_null=True, required=False)
 
     class Meta:
         model = Quest
