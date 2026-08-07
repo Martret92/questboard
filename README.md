@@ -13,6 +13,19 @@ QuestBoard focuses on dependency-aware workflows, project-level authorization, a
 - Psycopg 3
 - Gunicorn
 - Docker / Docker Compose
+- OpenAPI via drf-spectacular
+
+## API documentation
+
+When the application is running:
+
+- OpenAPI schema: `http://localhost:8000/api/schema/`
+- Swagger UI: `http://localhost:8000/api/docs/`
+- Database-backed health check: `http://localhost:8000/health/`
+
+API endpoints use Django session authentication or HTTP Basic authentication. The schema and documentation are public so the API contract can be inspected without credentials; protected API operations still enforce their normal authentication and project-scoped permissions.
+
+Workflow state changes use the explicit `/transition/` endpoint rather than arbitrary state mutation. Dependency and event endpoints are exposed separately so graph mutations and audit history remain visible in the API contract.
 
 ## Docker quick start
 
@@ -72,6 +85,28 @@ Use `docker compose down -v` only when you intentionally want to delete the loca
    ```bash
    python manage.py runserver
    ```
+
+## Deployment on Render
+
+The Docker image is compatible with Render web services. It applies migrations before starting Gunicorn and binds to Render's `PORT` environment variable, with port 8000 as the local fallback.
+
+1. Create a managed PostgreSQL database in Render.
+2. Create a Web Service from this repository and select **Docker** as the runtime.
+3. Configure these environment variables on the web service:
+
+   - `DATABASE_URL`: the Render Postgres internal database URL;
+   - `DJANGO_SECRET_KEY`: a generated production secret;
+   - `DJANGO_DEBUG=false`;
+   - `DJANGO_ALLOWED_HOSTS`: the service's Render hostname, without `https://`.
+
+4. Configure the health check path as `/health/`.
+5. Deploy the service and verify:
+
+   - `/health/` returns `{"status": "ok"}`;
+   - `/api/schema/` returns the OpenAPI schema;
+   - `/api/docs/` loads Swagger UI.
+
+No database credentials or production secrets belong in the repository.
 
 ## Architecture baseline
 
