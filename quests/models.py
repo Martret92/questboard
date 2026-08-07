@@ -24,7 +24,7 @@ class Quest(models.Model):
     due_date = models.DateField(null=True, blank=True)
     assignee = models.ForeignKey(
         ProjectMembership,
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         related_name="assigned_quests",
         null=True,
         blank=True,
