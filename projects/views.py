@@ -85,7 +85,9 @@ class ProjectMembershipViewSet(viewsets.ViewSet):
             raise PermissionDenied(exc.messages[0]) from exc
         except IntegrityError as exc:
             raise ValidationError({"user_id": "User is already a member of this project."}) from exc
-        return Response(ProjectMembershipSerializer(membership).data, status=status.HTTP_201_CREATED)
+        return Response(
+            ProjectMembershipSerializer(membership).data, status=status.HTTP_201_CREATED
+        )
 
     def partial_update(self, request, pk=None, project_pk=None):
         project = self._project(project_pk)
