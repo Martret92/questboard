@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -157,6 +158,10 @@ class QuestDependencyViewSet(ProjectScopedMixin, viewsets.ViewSet):
 class QuestTransitionView(ProjectScopedMixin, viewsets.ViewSet):
     serializer_class = QuestTransitionSerializer
 
+    @extend_schema(
+        request=QuestTransitionSerializer,
+        responses={status.HTTP_200_OK: QuestSerializer},
+    )
     def create(self, request, project_pk=None, quest_pk=None):
         project = self._project(project_pk)
         quest = self._quest(project, quest_pk)
