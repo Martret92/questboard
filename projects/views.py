@@ -17,6 +17,7 @@ from projects.services import (
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
+    queryset = Project.objects.all()
     serializer_class = ProjectSerializer
 
     def get_queryset(self):
