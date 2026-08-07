@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from projects.models import Project
 from quests.models import Quest
 from quests.serializers import QuestSerializer
-from quests.services import QuestMutationError, assign_quest, create_quest, delete_quest, update_quest_metadata
+from quests.services import QuestMutationError, create_quest, delete_quest, update_quest
 
 
 class QuestViewSet(viewsets.ViewSet):
@@ -69,16 +69,13 @@ class QuestViewSet(viewsets.ViewSet):
         serializer = QuestSerializer(quest, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
+        changes = {
+            key: serializer.validated_data[key]
+            for key in ("title", "description", "priority", "due_date", "assignee_id")
+            if key in serializer.validated_data
+        }
         try:
-            metadata_fields = {key: serializer.validated_data[key] for key in ("title", "description", "priority", "due_date") if key in serializer.validated_data}
-            if metadata_fields:
-                quest = update_quest_metadata(quest_id=quest.id, actor=request.user, **metadata_fields)
-            if "assignee_id" in serializer.validated_data:
-                quest = assign_quest(
-                    quest_id=quest.id,
-                    actor=request.user,
-                    assignee_id=serializer.validated_data["assignee_id"],
-                )
+            quest = update_quest(quest_id=quest.id, actor=request.user, **changes)
         except QuestMutationError as exc:
             message = exc.messages[0]
             if "Only owners or reviewers" in message:
