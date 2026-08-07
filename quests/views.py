@@ -4,12 +4,32 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from projects.models import Project
-from quests.models import Quest
-from quests.serializers import QuestSerializer
-from quests.services import QuestMutationError, create_quest, delete_quest, update_quest
+from quests.models import Quest, QuestDependency, QuestEvent
+from quests.serializers import (
+    QuestDependencySerializer,
+    QuestEventSerializer,
+    QuestSerializer,
+    QuestTransitionSerializer,
+)
+from quests.services import (
+    QuestMutationError,
+    add_dependency,
+    create_quest,
+    delete_quest,
+    remove_dependency,
+    transition_quest,
+    update_quest,
+)
 
 
-class QuestViewSet(viewsets.ViewSet):
+def _raise_api_error(exc: QuestMutationError):
+    message = exc.messages[0]
+    if "Only owners or reviewers" in message:
+        raise PermissionDenied(message) from exc
+    raise ValidationError({"detail": message}) from exc
+
+
+class ProjectScopedMixin:
     def _project(self, project_pk: int) -> Project:
         return get_object_or_404(
             Project.objects.filter(memberships__user=self.request.user).distinct(),
@@ -22,6 +42,8 @@ class QuestViewSet(viewsets.ViewSet):
             pk=pk,
         )
 
+
+class QuestViewSet(ProjectScopedMixin, viewsets.ViewSet):
     def list(self, request, project_pk=None):
         project = self._project(project_pk)
         queryset = Quest.objects.filter(project=project).select_related("assignee", "assignee__user").order_by("id")
@@ -57,10 +79,7 @@ class QuestViewSet(viewsets.ViewSet):
                 assignee_id=serializer.validated_data.get("assignee_id"),
             )
         except QuestMutationError as exc:
-            message = exc.messages[0]
-            if "Only owners or reviewers" in message:
-                raise PermissionDenied(message) from exc
-            raise ValidationError({"detail": message}) from exc
+            _raise_api_error(exc)
         return Response(QuestSerializer(quest).data, status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, pk=None, project_pk=None):
@@ -77,11 +96,7 @@ class QuestViewSet(viewsets.ViewSet):
         try:
             quest = update_quest(quest_id=quest.id, actor=request.user, **changes)
         except QuestMutationError as exc:
-            message = exc.messages[0]
-            if "Only owners or reviewers" in message:
-                raise PermissionDenied(message) from exc
-            raise ValidationError({"detail": message}) from exc
-
+            _raise_api_error(exc)
         return Response(QuestSerializer(quest).data)
 
     def destroy(self, request, pk=None, project_pk=None):
@@ -90,8 +105,65 @@ class QuestViewSet(viewsets.ViewSet):
         try:
             delete_quest(quest_id=quest.id, actor=request.user)
         except QuestMutationError as exc:
-            message = exc.messages[0]
-            if "Only owners or reviewers" in message:
-                raise PermissionDenied(message) from exc
-            raise ValidationError({"detail": message}) from exc
+            _raise_api_error(exc)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class QuestDependencyViewSet(ProjectScopedMixin, viewsets.ViewSet):
+    def list(self, request, project_pk=None, quest_pk=None):
+        project = self._project(project_pk)
+        quest = self._quest(project, quest_pk)
+        edges = QuestDependency.objects.filter(dependent=quest).select_related("prerequisite").order_by("id")
+        return Response(QuestDependencySerializer(edges, many=True).data)
+
+    def create(self, request, project_pk=None, quest_pk=None):
+        project = self._project(project_pk)
+        quest = self._quest(project, quest_pk)
+        serializer = QuestDependencySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            edge = add_dependency(
+                dependent_id=quest.id,
+                prerequisite_id=serializer.validated_data["prerequisite_id"],
+                actor=request.user,
+            )
+        except QuestMutationError as exc:
+            _raise_api_error(exc)
+        return Response(QuestDependencySerializer(edge).data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, pk=None, project_pk=None, quest_pk=None):
+        project = self._project(project_pk)
+        quest = self._quest(project, quest_pk)
+        edge = get_object_or_404(QuestDependency.objects.filter(dependent=quest), pk=pk)
+        try:
+            remove_dependency(dependency_id=edge.id, actor=request.user)
+        except QuestMutationError as exc:
+            _raise_api_error(exc)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class QuestTransitionView(ProjectScopedMixin, viewsets.ViewSet):
+    def create(self, request, project_pk=None, quest_pk=None):
+        project = self._project(project_pk)
+        quest = self._quest(project, quest_pk)
+        serializer = QuestTransitionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            quest = transition_quest(
+                quest_id=quest.id,
+                actor=request.user,
+                target_state=serializer.validated_data["target_state"],
+            )
+        except QuestMutationError as exc:
+            _raise_api_error(exc)
+        return Response(QuestSerializer(quest).data)
+
+
+class QuestEventView(ProjectScopedMixin, viewsets.ViewSet):
+    def list(self, request, project_pk=None, quest_pk=None):
+        project = self._project(project_pk)
+        events = QuestEvent.objects.filter(
+            project=project,
+            quest_id_snapshot=quest_pk,
+        ).select_related("actor").order_by("created_at", "id")
+        return Response(QuestEventSerializer(events, many=True).data)
