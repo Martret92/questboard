@@ -76,3 +76,6 @@ jobs:
 
       - name: Run test suite
         run: python manage.py test projects quests
+
+      - name: Build Docker image
+        run: docker build -t questboard:ci .
