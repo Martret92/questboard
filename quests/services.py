@@ -44,51 +44,53 @@ def create_quest(*, project_id: int, actor, title: str, description: str = "", p
 
 
 @transaction.atomic
-def update_quest_metadata(*, quest_id: int, actor, title: str | None = None, description: str | None = None, priority: str | None = None, due_date=...) -> Quest:
-    quest = Quest.objects.select_for_update().select_related("project").get(pk=quest_id)
-    _actor_membership(project_id=quest.project_id, actor=actor)
+def update_quest(
+    *,
+    quest_id: int,
+    actor,
+    title=...,
+    description=...,
+    priority=...,
+    due_date=...,
+    assignee_id=...,
+) -> Quest:
+    quest = Quest.objects.select_for_update().get(pk=quest_id)
+    actor_membership = _actor_membership(project_id=quest.project_id, actor=actor)
 
-    if quest.state != Quest.State.BACKLOG:
+    metadata_requested = any(value is not ... for value in (title, description, priority, due_date))
+    if metadata_requested and quest.state != Quest.State.BACKLOG:
         raise QuestMutationError("Quest metadata can only be edited while the quest is BACKLOG.")
 
+    if assignee_id is not ...:
+        _require_planning_authority(actor_membership)
+        if quest.state not in {Quest.State.BACKLOG, Quest.State.READY}:
+            raise QuestMutationError("Assignee can only be changed while the quest is BACKLOG or READY.")
+
+        assignee = None
+        if assignee_id is not None:
+            try:
+                assignee = ProjectMembership.objects.get(pk=assignee_id, project_id=quest.project_id)
+            except ProjectMembership.DoesNotExist as exc:
+                raise QuestMutationError("Assignee must belong to the same project.") from exc
+        quest.assignee = assignee
+
     update_fields = []
-    if title is not None:
-        quest.title = title
-        update_fields.append("title")
-    if description is not None:
-        quest.description = description
-        update_fields.append("description")
-    if priority is not None:
-        quest.priority = priority
-        update_fields.append("priority")
-    if due_date is not ...:
-        quest.due_date = due_date
-        update_fields.append("due_date")
+    for field_name, value in (
+        ("title", title),
+        ("description", description),
+        ("priority", priority),
+        ("due_date", due_date),
+    ):
+        if value is not ...:
+            setattr(quest, field_name, value)
+            update_fields.append(field_name)
+
+    if assignee_id is not ...:
+        update_fields.append("assignee")
 
     if update_fields:
         update_fields.append("updated_at")
         quest.save(update_fields=update_fields)
-    return quest
-
-
-@transaction.atomic
-def assign_quest(*, quest_id: int, actor, assignee_id: int | None) -> Quest:
-    quest = Quest.objects.select_for_update().get(pk=quest_id)
-    actor_membership = _actor_membership(project_id=quest.project_id, actor=actor)
-    _require_planning_authority(actor_membership)
-
-    if quest.state not in {Quest.State.BACKLOG, Quest.State.READY}:
-        raise QuestMutationError("Assignee can only be changed while the quest is BACKLOG or READY.")
-
-    assignee = None
-    if assignee_id is not None:
-        try:
-            assignee = ProjectMembership.objects.get(pk=assignee_id, project_id=quest.project_id)
-        except ProjectMembership.DoesNotExist as exc:
-            raise QuestMutationError("Assignee must belong to the same project.") from exc
-
-    quest.assignee = assignee
-    quest.save(update_fields=["assignee", "updated_at"])
     return quest
 
 
