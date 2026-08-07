@@ -48,7 +48,11 @@ class QuestViewSet(ProjectScopedMixin, viewsets.ViewSet):
 
     def list(self, request, project_pk=None):
         project = self._project(project_pk)
-        queryset = Quest.objects.filter(project=project).select_related("assignee", "assignee__user").order_by("id")
+        queryset = (
+            Quest.objects.filter(project=project)
+            .select_related("assignee", "assignee__user")
+            .order_by("id")
+        )
 
         state = request.query_params.get("state")
         priority = request.query_params.get("priority")
@@ -117,7 +121,11 @@ class QuestDependencyViewSet(ProjectScopedMixin, viewsets.ViewSet):
     def list(self, request, project_pk=None, quest_pk=None):
         project = self._project(project_pk)
         quest = self._quest(project, quest_pk)
-        edges = QuestDependency.objects.filter(dependent=quest).select_related("prerequisite").order_by("id")
+        edges = (
+            QuestDependency.objects.filter(dependent=quest)
+            .select_related("prerequisite")
+            .order_by("id")
+        )
         return Response(QuestDependencySerializer(edges, many=True).data)
 
     def create(self, request, project_pk=None, quest_pk=None):
@@ -170,8 +178,12 @@ class QuestEventView(ProjectScopedMixin, viewsets.ViewSet):
 
     def list(self, request, project_pk=None, quest_pk=None):
         project = self._project(project_pk)
-        events = QuestEvent.objects.filter(
-            project=project,
-            quest_id_snapshot=quest_pk,
-        ).select_related("actor").order_by("created_at", "id")
+        events = (
+            QuestEvent.objects.filter(
+                project=project,
+                quest_id_snapshot=quest_pk,
+            )
+            .select_related("actor")
+            .order_by("created_at", "id")
+        )
         return Response(QuestEventSerializer(events, many=True).data)
