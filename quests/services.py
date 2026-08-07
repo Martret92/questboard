@@ -204,12 +204,14 @@ def remove_dependency(*, dependency_id: int, actor) -> None:
 
 @transaction.atomic
 def transition_quest(*, quest_id: int, actor, target_state: str) -> Quest:
-    quest = Quest.objects.select_related("assignee", "assignee__user").get(pk=quest_id)
+    quest_snapshot = Quest.objects.only("id", "project_id", "state").get(pk=quest_id)
 
-    if quest.state == Quest.State.BACKLOG and target_state == Quest.State.READY:
-        _locked_project(quest.project_id)
+    if quest_snapshot.state == Quest.State.BACKLOG and target_state == Quest.State.READY:
+        _locked_project(quest_snapshot.project_id)
 
-    quest = Quest.objects.select_for_update().select_related("assignee", "assignee__user").get(pk=quest_id)
+    # Lock only the Quest row. Joining the nullable assignee relation here would
+    # produce an outer join that PostgreSQL cannot lock with FOR UPDATE.
+    quest = Quest.objects.select_for_update().get(pk=quest_id)
     actor_membership = _actor_membership(project_id=quest.project_id, actor=actor)
     source_state = quest.state
 
