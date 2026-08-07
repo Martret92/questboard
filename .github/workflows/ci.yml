@@ -41,6 +41,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -53,6 +55,15 @@ jobs:
 
       - name: Lint
         run: ruff check .
+
+      - name: Check formatting of changed Python
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          files=$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA" -- '*.py' | grep -vE '(^|/)migrations/' || true)
+          if [ -n "$files" ]; then
+            printf '%s\n' "$files" | xargs ruff format --check
+          fi
 
       - name: Check model migration drift
         run: python manage.py makemigrations --check
