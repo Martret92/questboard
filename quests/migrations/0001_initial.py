@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                 ("due_date", models.DateField(blank=True, null=True)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("assignee", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="assigned_quests", to="projects.projectmembership")),
+                ("assignee", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name="assigned_quests", to="projects.projectmembership")),
                 ("project", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="quests", to="projects.project")),
             ],
         ),
