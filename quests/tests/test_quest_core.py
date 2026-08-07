@@ -44,6 +44,12 @@ class QuestCoreAPITests(APITestCase):
     def detail_url(self, quest):
         return reverse("project-quest-detail", kwargs={"project_pk": quest.project_id, "pk": quest.id})
 
+    def membership_detail_url(self, membership):
+        return reverse(
+            "project-membership-detail",
+            kwargs={"project_pk": membership.project_id, "pk": membership.id},
+        )
+
     def test_member_can_create_unassigned_quest_in_backlog(self):
         self.client.force_authenticate(self.contributor)
         response = self.client.post(
@@ -159,6 +165,19 @@ class QuestCoreAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         quest.refresh_from_db()
         self.assertEqual(quest.assignee, self.contributor_membership)
+
+    def test_assigned_membership_cannot_be_deleted(self):
+        Quest.objects.create(
+            project=self.project,
+            title="Protected assignment",
+            assignee=self.contributor_membership,
+        )
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.delete(self.membership_detail_url(self.contributor_membership))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(ProjectMembership.objects.filter(pk=self.contributor_membership.id).exists())
 
     def test_state_cannot_be_changed_by_generic_patch(self):
         quest = Quest.objects.create(project=self.project, title="No shortcut")
