@@ -5,7 +5,9 @@ description = "Backend-first collaborative workflow API with dependency-aware qu
 requires-python = ">=3.12"
 dependencies = [
     "Django>=5.2.16,<5.3",
+    "dj-database-url>=3.1,<4",
     "djangorestframework>=3.17.1,<3.18",
+    "drf-spectacular>=0.30,<0.31",
     "gunicorn>=23,<24",
     "psycopg[binary]>=3.3.4,<3.4",
 ]
