@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models.deletion import ProtectedError
 
 from projects.models import Project, ProjectMembership
 
@@ -73,4 +74,9 @@ def remove_membership(*, membership_id: int, actor) -> None:
     membership = ProjectMembership.objects.select_for_update().get(pk=membership_id)
     _assert_actor_is_owner(project=project, actor=actor)
     _assert_owner_remains(project=project, membership=membership)
-    membership.delete()
+    try:
+        membership.delete()
+    except ProtectedError as exc:
+        raise ProjectMembershipError(
+            "Membership cannot be removed while it is assigned to a quest."
+        ) from exc
