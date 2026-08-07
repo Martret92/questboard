@@ -74,8 +74,11 @@ jobs:
       - name: Run migrations
         run: python manage.py migrate --noinput
 
+      - name: Validate OpenAPI schema
+        run: python manage.py spectacular --file /tmp/schema.yml --validate
+
       - name: Run test suite
-        run: python manage.py test projects quests
+        run: python manage.py test config projects quests
 
       - name: Build Docker image
         run: docker build -t questboard:ci .

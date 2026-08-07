@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -44,9 +45,15 @@ class ProjectScopedMixin:
 
 
 class QuestViewSet(ProjectScopedMixin, viewsets.ViewSet):
+    serializer_class = QuestSerializer
+
     def list(self, request, project_pk=None):
         project = self._project(project_pk)
-        queryset = Quest.objects.filter(project=project).select_related("assignee", "assignee__user").order_by("id")
+        queryset = (
+            Quest.objects.filter(project=project)
+            .select_related("assignee", "assignee__user")
+            .order_by("id")
+        )
 
         state = request.query_params.get("state")
         priority = request.query_params.get("priority")
@@ -110,10 +117,16 @@ class QuestViewSet(ProjectScopedMixin, viewsets.ViewSet):
 
 
 class QuestDependencyViewSet(ProjectScopedMixin, viewsets.ViewSet):
+    serializer_class = QuestDependencySerializer
+
     def list(self, request, project_pk=None, quest_pk=None):
         project = self._project(project_pk)
         quest = self._quest(project, quest_pk)
-        edges = QuestDependency.objects.filter(dependent=quest).select_related("prerequisite").order_by("id")
+        edges = (
+            QuestDependency.objects.filter(dependent=quest)
+            .select_related("prerequisite")
+            .order_by("id")
+        )
         return Response(QuestDependencySerializer(edges, many=True).data)
 
     def create(self, request, project_pk=None, quest_pk=None):
@@ -143,6 +156,12 @@ class QuestDependencyViewSet(ProjectScopedMixin, viewsets.ViewSet):
 
 
 class QuestTransitionView(ProjectScopedMixin, viewsets.ViewSet):
+    serializer_class = QuestTransitionSerializer
+
+    @extend_schema(
+        request=QuestTransitionSerializer,
+        responses={status.HTTP_200_OK: QuestSerializer},
+    )
     def create(self, request, project_pk=None, quest_pk=None):
         project = self._project(project_pk)
         quest = self._quest(project, quest_pk)
@@ -160,10 +179,16 @@ class QuestTransitionView(ProjectScopedMixin, viewsets.ViewSet):
 
 
 class QuestEventView(ProjectScopedMixin, viewsets.ViewSet):
+    serializer_class = QuestEventSerializer
+
     def list(self, request, project_pk=None, quest_pk=None):
         project = self._project(project_pk)
-        events = QuestEvent.objects.filter(
-            project=project,
-            quest_id_snapshot=quest_pk,
-        ).select_related("actor").order_by("created_at", "id")
+        events = (
+            QuestEvent.objects.filter(
+                project=project,
+                quest_id_snapshot=quest_pk,
+            )
+            .select_related("actor")
+            .order_by("created_at", "id")
+        )
         return Response(QuestEventSerializer(events, many=True).data)
