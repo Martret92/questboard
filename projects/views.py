@@ -50,6 +50,13 @@ class ProjectMembershipViewSet(viewsets.ViewSet):
             pk=project_pk,
         )
 
+    def _assert_owner(self, project: Project) -> None:
+        if not project.memberships.filter(
+            user=self.request.user,
+            role=ProjectMembership.Role.OWNER,
+        ).exists():
+            raise PermissionDenied("Only project owners can manage memberships.")
+
     def list(self, request, project_pk=None):
         project = self._project(project_pk)
         memberships = project.memberships.select_related("user").order_by("id")
@@ -62,6 +69,7 @@ class ProjectMembershipViewSet(viewsets.ViewSet):
 
     def create(self, request, project_pk=None):
         project = self._project(project_pk)
+        self._assert_owner(project)
         serializer = ProjectMembershipSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
