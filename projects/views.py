@@ -44,6 +44,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
 
 class ProjectMembershipViewSet(viewsets.ViewSet):
+    serializer_class = ProjectMembershipSerializer
+
     def _project(self, project_pk: int) -> Project:
         return get_object_or_404(
             Project.objects.filter(memberships__user=self.request.user).distinct(),
